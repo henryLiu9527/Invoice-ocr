@@ -57,10 +57,58 @@ class ResultExporter:
             return ["OCR Processing Failed"]
         
         result = ocr_result.get('result', {})
-        words_result = result.get('words_result', [])
+        invoice_type = ocr_result.get('invoice_type', 'Auto')
         
-        # 从words_result中提取文本
-        if words_result:
+        # 处理智能财务票据识别结果
+        if 'multiple_invoice' in result:
+            multi_data = result.get('multiple_invoice', {})
+            lines.append("== 智能财务票据识别结果 ==")
+            
+            # 获取票据类型
+            invoice_type_detected = multi_data.get('invoice_type', {}).get('text', 'Unknown')
+            lines.append(f"检测到的票据类型: {invoice_type_detected}")
+            lines.append("------------------------------")
+            
+            # 处理票据详细信息
+            invoice_detail = multi_data.get('details', [])
+            if isinstance(invoice_detail, list):
+                for item in invoice_detail:
+                    if isinstance(item, dict):
+                        key = item.get('key', '')
+                        value = item.get('value', '')
+                        lines.append(f"{key}: {value}")
+            
+            # 处理票据金额
+            if 'money' in multi_data:
+                lines.append(f"金额: {multi_data['money']}")
+            
+            # 处理票据其他字段
+            for field in ['tax', 'date', 'publisher', 'buyer', 'seller']:
+                if field in multi_data:
+                    lines.append(f"{field.capitalize()}: {multi_data[field]}")
+        
+        # 处理通用高精度接口返回结果 (accurate)
+        elif invoice_type == 'Accurate' and 'words_result' in result:
+            lines.append("== 通用高精度识别结果 ==")
+            words_result = result.get('words_result', [])
+            
+            for item in words_result:
+                if isinstance(item, dict):
+                    words = item.get('words', '')
+                    probability = item.get('probability', {}).get('average', 0)
+                    probability_str = f" (置信度: {probability:.2f})" if probability else ""
+                    lines.append(f"{words}{probability_str}")
+                    
+                    # 如果有位置信息，也可以添加
+                    location = item.get('location', {})
+                    if location:
+                        loc_str = f"位置: 左={location.get('left', 0)}, 上={location.get('top', 0)}, 宽={location.get('width', 0)}, 高={location.get('height', 0)}"
+                        lines.append(f"  {loc_str}")
+        
+        # 处理标准的words_result格式
+        elif 'words_result' in result:
+            words_result = result.get('words_result', [])
+            
             for item in words_result:
                 if isinstance(item, dict) and 'words' in item:
                     lines.append(item['words'])
@@ -70,11 +118,17 @@ class ResultExporter:
         # 处理特殊格式（增值税发票等）
         if 'vat_invoice' in result:
             vat_data = result['vat_invoice']
+            if not lines:  # 如果之前没有内容，添加标题
+                lines.append("== 增值税发票识别结果 ==")
             for key, value in vat_data.items():
                 if isinstance(value, dict) and 'word' in value:
                     lines.append(f"{key}: {value['word']}")
                 elif isinstance(value, str):
                     lines.append(f"{key}: {value}")
+        
+        # 如果没有提取到任何文本
+        if not lines:
+            lines.append("No text detected or unsupported result format")
         
         return lines
     
@@ -104,6 +158,7 @@ class ResultExporter:
             metadata = {
                 'Original File': os.path.basename(original_filename),
                 'OCR Engine': ocr_result.get('engine', 'unknown'),
+                'Invoice Type': ocr_result.get('invoice_type', 'unknown'),
                 'Export Time': pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')
             }
             
@@ -151,6 +206,7 @@ class ResultExporter:
             doc.add_heading('Metadata', level=2)
             doc.add_paragraph(f"Original File: {os.path.basename(original_filename)}")
             doc.add_paragraph(f"OCR Engine: {ocr_result.get('engine', 'unknown')}")
+            doc.add_paragraph(f"Invoice Type: {ocr_result.get('invoice_type', 'unknown')}")
             doc.add_paragraph(f"Export Time: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}")
             
             # 添加OCR结果
@@ -193,6 +249,7 @@ class ResultExporter:
                 f.write(f"# OCR Recognition Results\n")
                 f.write(f"# Original File: {os.path.basename(original_filename)}\n")
                 f.write(f"# OCR Engine: {ocr_result.get('engine', 'unknown')}\n")
+                f.write(f"# Invoice Type: {ocr_result.get('invoice_type', 'unknown')}\n")
                 f.write(f"# Export Time: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
                 f.write("#" + "-" * 50 + "\n\n")
                 

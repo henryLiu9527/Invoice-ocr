@@ -12,6 +12,9 @@ $(document).ready(function() {
     
     // Event Handlers
     function initializeUI() {
+        // Initialize tooltips
+        initializeTooltips();
+        
         // Initialize file input
         $('#selectFilesBtn').click(function() {
             $('#fileInput').click();
@@ -67,6 +70,14 @@ $(document).ready(function() {
             
             const format = $(this).data('format');
             exportResults(selectedFile, format);
+        });
+    }
+    
+    // Initialize Bootstrap tooltips
+    function initializeTooltips() {
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
         });
     }
     
@@ -149,6 +160,10 @@ $(document).ready(function() {
             return;
         }
         
+        // Clear downloads section
+        $('#downloadsList').empty();
+        $('#downloadsSection').addClass('d-none');
+        
         // Prepare form data
         const formData = new FormData();
         selectedFiles.forEach(file => {
@@ -160,6 +175,9 @@ $(document).ready(function() {
         $('#ocrResults').addClass('d-none');
         $('#processingIndicator').removeClass('d-none');
         $('#processBtn').prop('disabled', true);
+        
+        // Hide export options
+        $('#exportOptions').addClass('d-none');
         
         // Upload files
         $.ajax({

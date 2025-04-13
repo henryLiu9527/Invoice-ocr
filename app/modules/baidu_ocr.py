@@ -20,7 +20,9 @@ class BaiduOCR:
         'General': 'invoice',               # 通用发票
         'Receipt': 'receipt',               # 收据
         'Form': 'form',                     # 表单
-        'Auto': 'accurate_basic'            # 自动（通用高精度）
+        'Auto': 'accurate_basic',           # 自动（通用高精度基础版）
+        'MultipleInvoice': 'multiple_invoice', # 智能财务票据识别（新增）
+        'Accurate': 'accurate'              # 通用高精度版（新增）
     }
     
     def __init__(self):
@@ -71,7 +73,7 @@ class BaiduOCR:
         
         Args:
             image_path: 图像文件路径
-            invoice_type: 发票类型，可选值包括Auto、VAT、General、Receipt、Form
+            invoice_type: 发票类型，可选值包括Auto、VAT、General、Receipt、Form、MultipleInvoice、Accurate
             
         Returns:
             识别结果的JSON对象
@@ -93,9 +95,14 @@ class BaiduOCR:
         data = {'image': image_base64}
         
         # 添加特定参数
-        if ocr_type == 'accurate_basic':
+        if ocr_type in ['accurate_basic', 'accurate']:
             data['detect_direction'] = 'true'
             data['probability'] = 'true'
+        
+        # 针对智能财务票据添加特定参数
+        if ocr_type == 'multiple_invoice':
+            data['recognize_granularity'] = 'big'
+            data['detect_direction'] = 'true'
         
         # 尝试请求，最多重试BAIDU_OCR_MAX_RETRIES次
         for attempt in range(BAIDU_OCR_MAX_RETRIES):
@@ -127,7 +134,7 @@ class BaiduOCR:
                 
                 # 成功处理，返回结果
                 logger.info(f"Successfully processed image with Baidu OCR: {os.path.basename(image_path)}")
-                return {'success': True, 'result': result, 'engine': 'baidu'}
+                return {'success': True, 'result': result, 'engine': 'baidu', 'invoice_type': invoice_type}
                 
             except Exception as e:
                 logger.error(f"Baidu OCR request failed (attempt {attempt+1}/{BAIDU_OCR_MAX_RETRIES}): {str(e)}")
