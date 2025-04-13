@@ -1,0 +1,11 @@
+flask>=2.3.0,<2.4.0
+requests>=2.31.0
+numpy>=1.24.0,<1.25.0
+opencv-python<=4.6.0.66
+pillow>=9.5.0
+pandas>=2.0.0,<2.1.0
+openpyxl>=3.1.0
+python-docx>=0.8.11
+werkzeug>=2.3.0,<2.4.0
+paddlepaddle>=2.5.0
+paddleocr>=2.6.0

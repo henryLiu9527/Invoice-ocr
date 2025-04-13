@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSC Invoice OCR Handling</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container mt-4">
+        <header class="text-center mb-4">
+            <h1 class="primary-color">JSC Invoice OCR Handling</h1>
+            <p class="text-muted">Upload invoices and receipts for automatic text recognition and data extraction</p>
+        </header>
+
+        <div class="row">
+            <!-- Left Panel: Upload and OCR Options -->
+            <div class="col-md-6">
+                <div class="card mb-4 shadow-sm">
+                    <!-- File Upload Area -->
+                    <div class="card-body p-4">
+                        <div class="upload-area mb-4" id="dropZone">
+                            <div class="text-center">
+                                <i class="fas fa-cloud-upload-alt fa-3x mb-3 primary-color"></i>
+                                <h5>Select Files</h5>
+                                <p class="text-muted small">Supported formats: PNG, JPG, JPEG, PDF, TIF, TIFF</p>
+                                <p class="text-muted small">Maximum 10 files can be processed at once</p>
+                                <input type="file" class="form-control d-none" id="fileInput" multiple accept=".png,.jpg,.jpeg,.pdf,.tif,.tiff">
+                                <button class="btn btn-primary" id="selectFilesBtn">Select Files</button>
+                            </div>
+                        </div>
+
+                        <!-- Engine Selection -->
+                        <div class="mb-4">
+                            <h5>OCR Engine Selection</h5>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="engine-option card mb-2" data-engine="baidu">
+                                        <div class="card-body text-center p-3">
+                                            <i class="fas fa-cloud fa-2x mb-2 primary-color"></i>
+                                            <h6>Baidu OCR</h6>
+                                            <p class="text-muted small mb-0">Cloud recognition</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="engine-option card mb-2" data-engine="paddle">
+                                        <div class="card-body text-center p-3">
+                                            <i class="fas fa-microchip fa-2x mb-2 primary-color"></i>
+                                            <h6>PaddleOCR</h6>
+                                            <p class="text-muted small mb-0">Local processing</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Invoice Type Selection -->
+                        <div class="mb-4">
+                            <h5>Baidu Invoice Type</h5>
+                            <div class="invoice-type-selector btn-group w-100" role="group">
+                                <input type="radio" class="btn-check" name="invoiceType" id="Auto" value="Auto" checked>
+                                <label class="btn btn-outline-primary" for="Auto">Auto</label>
+
+                                <input type="radio" class="btn-check" name="invoiceType" id="VAT" value="VAT">
+                                <label class="btn btn-outline-primary" for="VAT">VAT</label>
+
+                                <input type="radio" class="btn-check" name="invoiceType" id="General" value="General">
+                                <label class="btn btn-outline-primary" for="General">General</label>
+
+                                <input type="radio" class="btn-check" name="invoiceType" id="Receipt" value="Receipt">
+                                <label class="btn btn-outline-primary" for="Receipt">Receipt</label>
+
+                                <input type="radio" class="btn-check" name="invoiceType" id="Form" value="Form">
+                                <label class="btn btn-outline-primary" for="Form">Form</label>
+                            </div>
+                        </div>
+
+                        <!-- Process Button -->
+                        <div class="text-center mb-3">
+                            <button class="btn btn-lg btn-primary w-100" id="processBtn" disabled>
+                                <i class="fas fa-cogs me-2"></i> Start Processing
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel: Results Display -->
+            <div class="col-md-6">
+                <div class="card shadow-sm">
+                    <div class="card-body p-4">
+                        <div id="resultsArea">
+                            <div class="text-center p-5" id="noResultsPlaceholder">
+                                <i class="far fa-file-alt fa-5x mb-3 text-muted"></i>
+                                <h5 class="text-muted">Recognized text will appear here</h5>
+                            </div>
+                            <div id="processingIndicator" class="text-center p-5 d-none">
+                                <div class="spinner-border text-primary mb-3" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <h5>Processing files...</h5>
+                                <p class="text-muted">This may take a few moments</p>
+                            </div>
+                            <div id="ocrResults" class="d-none">
+                                <!-- Results will be populated here -->
+                            </div>
+                        </div>
+
+                        <!-- Export Options -->
+                        <div id="exportOptions" class="mt-4 d-none">
+                            <h5>Export Options</h5>
+                            <div class="row">
+                                <div class="col-4">
+                                    <button class="btn btn-outline-success w-100 export-btn" data-format="xlsx">
+                                        <i class="far fa-file-excel me-2"></i> Excel
+                                    </button>
+                                </div>
+                                <div class="col-4">
+                                    <button class="btn btn-outline-primary w-100 export-btn" data-format="docx">
+                                        <i class="far fa-file-word me-2"></i> Word
+                                    </button>
+                                </div>
+                                <div class="col-4">
+                                    <button class="btn btn-outline-secondary w-100 export-btn" data-format="txt">
+                                        <i class="far fa-file-alt me-2"></i> Text
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Downloads Section -->
+                        <div id="downloadsSection" class="mt-4 d-none">
+                            <h5>Downloads</h5>
+                            <ul class="list-group" id="downloadsList">
+                                <!-- Downloads will be populated here -->
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer class="mt-4 mb-4 text-center">
+            <p class="text-muted">&copy; 2023 JSC IT OCR</p>
+        </footer>
+    </div>
+
+    <!-- Alert Container -->
+    <div id="alertContainer" class="position-fixed top-0 end-0 p-3" style="z-index: 1050"></div>
+
+    <!-- JavaScript Dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html> 

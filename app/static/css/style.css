@@ -1,0 +1,194 @@
+/* Custom CSS for Invoice OCR Application */
+
+:root {
+    --primary-color: #2563eb;
+    --primary-color-hover: #1e40af;
+    --secondary-color: #64748b;
+    --light-bg: #f8fafc;
+    --border-radius: 8px;
+    --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+body {
+    background-color: var(--light-bg);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.container {
+    max-width: 1200px;
+}
+
+.primary-color {
+    color: var(--primary-color);
+}
+
+/* Card Styles */
+.card {
+    border-radius: var(--border-radius);
+    border: none;
+    overflow: hidden;
+}
+
+.card-body {
+    padding: 1.5rem;
+}
+
+/* Upload Area */
+.upload-area {
+    border: 2px dashed #ddd;
+    border-radius: var(--border-radius);
+    padding: 2rem 1rem;
+    transition: all 0.3s ease;
+    background-color: #fafafa;
+}
+
+.upload-area:hover, .upload-area.dragover {
+    border-color: var(--primary-color);
+    background-color: rgba(37, 99, 235, 0.05);
+}
+
+.upload-area i {
+    color: var(--primary-color);
+}
+
+/* Button Styles */
+.btn-primary {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.btn-primary:hover, .btn-primary:focus {
+    background-color: var(--primary-color-hover);
+    border-color: var(--primary-color-hover);
+}
+
+/* Engine Selection */
+.engine-option {
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 2px solid #eee;
+}
+
+.engine-option:hover {
+    border-color: #ccc;
+    transform: translateY(-2px);
+}
+
+.engine-option.selected {
+    border-color: var(--primary-color);
+    background-color: rgba(37, 99, 235, 0.05);
+}
+
+/* File List */
+.file-item {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    border: 1px solid #eee;
+    border-radius: 4px;
+    margin-bottom: 8px;
+    background: white;
+}
+
+.file-item i {
+    font-size: 1.2rem;
+    margin-right: 10px;
+}
+
+.file-item .file-name {
+    flex-grow: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.file-item .remove-file {
+    color: #f87171;
+    cursor: pointer;
+}
+
+/* Result Card */
+.result-card {
+    margin-bottom: 15px;
+    border-left: 4px solid var(--primary-color);
+}
+
+.result-card.error {
+    border-left-color: #f87171;
+}
+
+.result-card .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #fafafa;
+}
+
+.result-card .card-body {
+    padding: 1rem;
+}
+
+/* Previews */
+.preview-text {
+    max-height: 200px;
+    overflow-y: auto;
+    background-color: #f8f9fa;
+    padding: 10px;
+    border-radius: 4px;
+    margin-top: 10px;
+    font-family: monospace;
+    white-space: pre-wrap;
+}
+
+/* Export Options */
+.export-btn {
+    padding: 0.5rem;
+}
+
+/* Downloads List */
+.download-item {
+    padding: 10px 15px;
+    margin-bottom: 8px;
+    border-radius: 4px;
+    background-color: #f8f9fa;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.download-item i {
+    font-size: 1.2rem;
+}
+
+.download-item .download-name {
+    flex-grow: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Alerts */
+.alert {
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .row {
+        flex-direction: column;
+    }
+    
+    .col-md-6 {
+        width: 100%;
+    }
+    
+    .export-btn {
+        padding: 0.5rem 0.25rem;
+        font-size: 0.9rem;
+    }
+    
+    .export-btn i {
+        margin-right: 0.25rem;
+    }
+} 
