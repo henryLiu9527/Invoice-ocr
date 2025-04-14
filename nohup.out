@@ -1,0 +1,13 @@
+Activating virtual environment: venv_py38
+Installing gunicorn...
+Collecting gunicorn
+  Downloading gunicorn-23.0.0-py3-none-any.whl.metadata (4.4 kB)
+Requirement already satisfied: packaging in ./venv_py38/lib/python3.8/site-packages (from gunicorn) (24.2)
+Downloading gunicorn-23.0.0-py3-none-any.whl (85 kB)
+Installing collected packages: gunicorn
+Successfully installed gunicorn-23.0.0
+Starting Invoice OCR application...
+API Key: Io2AFs0q1pPmzlxxYn44dMmR
+Port: 5001
+Workers: 2, Threads: 4
+Failed to find attribute 'app' in 'app'.

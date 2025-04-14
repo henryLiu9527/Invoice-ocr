@@ -35,6 +35,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libsm6 \
     libxext6 \
     libxrender-dev \
+    curl \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -62,11 +63,15 @@ ENV BAIDU_OCR_SECRET_KEY="09cMxoWTA7UG7ekNIjs8AYJIJWvuXRUW"
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# 切换到非root用户
-USER appuser
-
 # 暴露端口
 EXPOSE 5001
 
-# 启动命令
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD curl -f http://localhost:5001/ || exit 1
+
+# 切换到非root用户
+USER appuser
+
+# 启动命令（直接使用Python）
 CMD ["python", "app.py"] 

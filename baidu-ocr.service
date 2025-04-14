@@ -1,0 +1,19 @@
+[Unit]
+Description=Baidu OCR Web Service
+After=network.target
+
+[Service]
+User=root
+Group=root
+WorkingDirectory=/opt/BaiduOCR
+Environment="PATH=/opt/BaiduOCR/venv_py38/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="BAIDU_OCR_API_KEY=Io2AFs0q1pPmzlxxYn44dMmR"
+Environment="BAIDU_OCR_SECRET_KEY=09cMxoWTA7UG7ekNIjs8AYJIJWvuXRUW"
+Environment="PORT=5001"
+ExecStart=/opt/BaiduOCR/venv_py38/bin/python app.py
+
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

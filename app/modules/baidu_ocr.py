@@ -19,7 +19,7 @@ class BaiduOCR:
         'VAT': 'vat_invoice',              # 增值税发票
         'General': 'invoice',               # 通用发票
         'Receipt': 'receipt',               # 收据
-        'Form': 'form',                     # 表单
+        'Form': 'table',                    # 表格识别（使用表格文字识别同步接口）
         'Auto': 'accurate_basic',           # 自动（通用高精度基础版）
         'MultipleInvoice': 'multiple_invoice', # 智能财务票据识别（新增）
         'Accurate': 'accurate'              # 通用高精度版（新增）
@@ -107,6 +107,16 @@ class BaiduOCR:
                 'verify_parameter': 'false',
                 'probability': 'false',
                 'location': 'false'
+            }
+        # 针对表格识别接口使用特定设置
+        elif ocr_type == 'table':
+            headers = {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Accept': 'application/json'
+            }
+            data = {
+                'image': image_base64,
+                'result_type': 'json'
             }
         else:
             # 其他接口的常规参数

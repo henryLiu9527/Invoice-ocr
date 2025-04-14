@@ -431,8 +431,8 @@ def cleanup(exception=None):
     pass
 
 # 启动自动清理线程
-cleanup_thread = threading.Thread(target=cleanup_old_files, daemon=True)
-cleanup_thread.start()
+# cleanup_thread = threading.Thread(target=cleanup_old_files, daemon=True)
+# cleanup_thread.start()
 
 if __name__ == '__main__':
     logger.info(f"Starting Flask application on port {PORT}")

@@ -10,3 +10,4 @@ werkzeug>=2.3.0,<2.4.0
 paddlepaddle>=2.5.0
 paddleocr>=2.6.0
 PyMuPDF==1.18.14
+gunicorn>=23.0.0

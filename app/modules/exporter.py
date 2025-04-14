@@ -320,6 +320,354 @@ class ResultExporter:
                             lines.append(item['words'])
                 else:
                     lines.append("未检测到文本内容")
+                    
+        # 处理表格识别结果
+        elif invoice_type == 'Form' and not has_vat_invoice_data:
+            lines.append("== 智能表格识别结果 ==")
+            
+            # 添加调试信息，输出收到的完整结果结构
+            logger.info(f"Processing Form result with keys: {list(result.keys())}")
+            if 'tables_result' in result:
+                logger.info(f"Found tables_result with {len(result['tables_result'])} tables")
+            elif 'result' in result and 'tables_result' in result['result']:
+                logger.info(f"Found tables_result in result with {len(result['result']['tables_result'])} tables")
+            
+            # 检查是否有表格数据
+            form_data = None
+            if 'tables_result' in result:
+                form_data = result.get('tables_result', [])
+                logger.info("Using tables_result directly")
+            elif 'result' in result and 'tables_result' in result['result']:
+                form_data = result['result'].get('tables_result', [])
+                logger.info("Using tables_result from result object")
+            elif 'result' in result and 'forms_result' in result['result']:
+                form_data = result['result'].get('forms_result', [])
+                logger.info("Using forms_result from result object")
+            elif 'forms_result' in result:
+                form_data = result.get('forms_result', [])
+                logger.info("Using forms_result directly")
+            elif 'form_result' in result:
+                form_data = result.get('form_result', [])
+                logger.info("Using form_result directly")
+            # 检查是否有单表格数据
+            elif 'table_html' in result or ('result' in result and 'table_html' in result['result']):
+                # 如果有table_html字段，说明是单表格
+                table_html = result.get('table_html', '')
+                if not table_html and 'result' in result:
+                    table_html = result['result'].get('table_html', '')
+                if table_html:
+                    logger.info("Found table_html data")
+                    lines.append(f"\n【HTML表格】")
+                    lines.append("表格已识别，请查看JSON结果获取完整HTML表格")
+                    form_data = [{'type': 'html'}]  # 创建一个虚拟表格项，使后续代码不会认为没有表格
+            # 检查表格单元格数据
+            elif 'tables' in result or ('result' in result and 'tables' in result['result']):
+                if 'tables' in result:
+                    form_data = result.get('tables', [])
+                    logger.info("Using tables directly")
+                else:
+                    form_data = result['result'].get('tables', [])
+                    logger.info("Using tables from result object")
+            elif 'cells' in result or ('result' in result and 'cells' in result['result']):
+                # 如果有cells字段，说明是使用了单元格格式返回表格
+                cells = []
+                matrix = []
+                if 'cells' in result:
+                    cells = result.get('cells', [])
+                    matrix = result.get('matrix', [])
+                    logger.info(f"Using cells directly: {len(cells)} cells with matrix size {len(matrix)}")
+                elif 'result' in result:
+                    cells = result['result'].get('cells', [])
+                    matrix = result['result'].get('matrix', [])
+                    logger.info(f"Using cells from result object: {len(cells)} cells with matrix size {len(matrix)}")
+                
+                if cells and matrix:
+                    # 构建表格数据
+                    table_data = []
+                    for row in matrix:
+                        row_data = []
+                        for cell_idx in row:
+                            if isinstance(cell_idx, int) and cell_idx < len(cells):
+                                cell = cells[cell_idx]
+                                row_data.append({'text': cell.get('text', '')})
+                            else:
+                                row_data.append({'text': ''})
+                        table_data.append(row_data)
+                    
+                    form_data = [{'body': table_data}]
+                    logger.info(f"Created table data with {len(table_data)} rows")
+            
+            if form_data and isinstance(form_data, list):
+                logger.info(f"Processing {len(form_data)} tables in form result")
+                
+                # 处理每个表格
+                for table_index, table in enumerate(form_data):
+                    lines.append(f"\n【表格 {table_index + 1}】")
+                    
+                    # 跳过HTML表格，因为我们无法在文本中很好地显示它
+                    if isinstance(table, dict) and table.get('type') == 'html':
+                        lines.append("  (HTML表格 - 请查看导出的JSON文件获取完整内容)")
+                        continue
+                    
+                    # 获取表格内容 - 处理标准body/header格式
+                    if isinstance(table, dict) and ('body' in table or 'cells' in table):
+                        # 处理标准body结构
+                        body = table.get('body', [])
+                        header = table.get('header', [])
+                        cell_layout = {}  # 用于保存单元格布局
+                        
+                        # 特别处理百度表格识别API的body结构
+                        if not body and 'cells' in table:
+                            # 百度表格识别API返回的cell_location格式
+                            logger.info(f"Processing Baidu Table API cells format")
+                            # 提取所有单元格并按行组织
+                            row_cells = {}
+                            cell_texts = {}
+                            row_heights = {}
+                            col_widths = {}
+                            
+                            # 首先提取所有单元格信息
+                            for cell in table.get('cells', []):
+                                if isinstance(cell, dict):
+                                    row_start = cell.get('row_start', 0)
+                                    row_end = cell.get('row_end', row_start)
+                                    col_start = cell.get('col_start', 0)
+                                    col_end = cell.get('col_end', col_start)
+                                    words = cell.get('words', '')
+                                    
+                                    # 记录单元格布局信息(跨行跨列)
+                                    for r in range(row_start, row_end + 1):
+                                        if r not in row_cells:
+                                            row_cells[r] = []
+                                            row_heights[r] = 0
+                                        
+                                        for c in range(col_start, col_end + 1):
+                                            if c not in col_widths:
+                                                col_widths[c] = 0
+                                            
+                                            # 只在左上角单元格保存实际内容
+                                            if r == row_start and c == col_start:
+                                                cell_texts[(r, c)] = words
+                                                # 计算理想的列宽（基于内容长度）
+                                                text_len = len(str(words))
+                                                if text_len > col_widths[c]:
+                                                    col_widths[c] = min(text_len, 30)  # 限制最大宽度为30
+                                            
+                                            # 记录单元格占用情况
+                                            row_cells[r].append(c)
+                                            cell_layout[(r, c)] = (row_start, col_start)
+                            
+                            # 确定所有行和列
+                            max_row = max(row_cells.keys()) if row_cells else 0
+                            all_cols = set()
+                            for cols in row_cells.values():
+                                all_cols.update(cols)
+                            max_col = max(all_cols) if all_cols else 0
+                            
+                            # 构建表格内容
+                            formatted_rows = []
+                            for r in range(max_row + 1):
+                                if r not in row_cells:
+                                    continue
+                                
+                                row_text = []
+                                for c in range(max_col + 1):
+                                    if (r, c) in cell_layout:
+                                        orig_r, orig_c = cell_layout[(r, c)]
+                                        if r == orig_r and c == orig_c:
+                                            # 这是一个单元格的左上角，显示内容
+                                            content = cell_texts.get((r, c), '')
+                                            width = col_widths.get(c, 10)
+                                            row_text.append(f"{content:{width}}")
+                                        # 否则这是一个被合并的单元格，不显示内容
+                                    else:
+                                        # 填充空单元格
+                                        width = col_widths.get(c, 10)
+                                        row_text.append(' ' * width)
+                                
+                                formatted_rows.append(row_text)
+                            
+                            # 输出格式化的表格
+                            if formatted_rows:
+                                # 生成分隔行
+                                sep_line = '+'
+                                for c in range(max_col + 1):
+                                    width = col_widths.get(c, 10)
+                                    sep_line += '-' * width + '+'
+                                
+                                lines.append(sep_line)
+                                for row_text in formatted_rows:
+                                    lines.append('|' + '|'.join(row_text) + '|')
+                                    lines.append(sep_line)
+                            else:
+                                lines.append("  (表格内容解析失败)")
+                        else:
+                            # 标准body结构处理
+                            logger.info(f"Table {table_index+1} has header: {bool(header)} and body with {len(body) if isinstance(body, list) else 'unknown'} rows")
+                            
+                            # 如果有表头，则显示表头
+                            if header and isinstance(header, list):
+                                # 计算每列的最大宽度
+                                col_widths = []
+                                header_text = []
+                                
+                                for cell in header:
+                                    # 获取单元格文本
+                                    cell_text = ""
+                                    if isinstance(cell, dict):
+                                        if 'words' in cell:
+                                            cell_text = cell['words']
+                                        elif 'text' in cell:
+                                            cell_text = cell['text']
+                                    else:
+                                        cell_text = str(cell)
+                                    
+                                    header_text.append(cell_text)
+                                    # 更新列宽
+                                    while len(col_widths) < len(header_text):
+                                        col_widths.append(0)
+                                    col_widths[len(header_text)-1] = max(col_widths[len(header_text)-1], min(len(cell_text), 30))
+                                
+                                # 生成表头行
+                                header_row = "| "
+                                for i, text in enumerate(header_text):
+                                    width = max(col_widths[i], 5)  # 最小宽度5
+                                    header_row += f"{text:{width}} | "
+                                lines.append(header_row)
+                                
+                                # 生成分隔行
+                                separator = "+-"
+                                for width in col_widths:
+                                    width = max(width, 5)  # 最小宽度5
+                                    separator += "-" * width + "-+-"
+                                lines.append(separator)
+                            
+                            # 显示表格内容
+                            if body and isinstance(body, list):
+                                for row_idx, row in enumerate(body):
+                                    if isinstance(row, list):
+                                        # 处理列表形式的行
+                                        row_text = "| "
+                                        for i, cell in enumerate(row):
+                                            # 获取单元格文本
+                                            cell_text = ""
+                                            if isinstance(cell, dict):
+                                                if 'words' in cell:
+                                                    cell_text = cell['words']
+                                                elif 'text' in cell:
+                                                    cell_text = cell['text']
+                                            else:
+                                                cell_text = str(cell)
+                                            
+                                            # 确保col_widths有足够的元素
+                                            while i >= len(col_widths):
+                                                col_widths.append(0)
+                                            
+                                            # 更新并使用列宽
+                                            width = max(col_widths[i], 5)  # 最小宽度5
+                                            row_text += f"{cell_text:{width}} | "
+                                        
+                                        lines.append(row_text)
+                                    # 百度表格识别API也可能返回行对象
+                                    elif isinstance(row, dict):
+                                        # 处理对象形式的行
+                                        if 'words' in row:
+                                            # 这是百度表格识别的行对象
+                                            lines.append(f"| {row.get('words', '')} |")
+                                        elif 'col_start' in row and 'col_end' in row:
+                                            # 这是单元格对象
+                                            col_span = row.get('col_end', 0) - row.get('col_start', 0) + 1
+                                            words = row.get('words', '')
+                                            lines.append(f"| {words} {'|' * col_span}")
+                                        elif 'cells' in row:
+                                            # 行包含多个单元格
+                                            row_text = "| "
+                                            for i, cell in enumerate(row['cells']):
+                                                cell_text = cell.get('text', '')
+                                                # 确保col_widths有足够的元素
+                                                while i >= len(col_widths):
+                                                    col_widths.append(0)
+                                                
+                                                # 更新并使用列宽
+                                                width = max(col_widths[i], 5)  # 最小宽度5
+                                                row_text += f"{cell_text:{width}} | "
+                                            
+                                            lines.append(row_text)
+                            elif body and isinstance(body, dict):
+                                # 处理字典形式的body
+                                lines.append("  (表格结构复杂，请查看JSON结果获取完整内容)")
+                            else:
+                                lines.append("  (表格内容为空)")
+                    else:
+                        # 尝试处理直接的表格数据
+                        if isinstance(table, list):
+                            # 计算每列的最大宽度
+                            col_widths = []
+                            
+                            # 第一遍：计算所有列宽
+                            for row in table:
+                                if isinstance(row, list):
+                                    for i, cell in enumerate(row):
+                                        cell_text = ""
+                                        if isinstance(cell, str):
+                                            cell_text = cell
+                                        elif isinstance(cell, dict):
+                                            if 'text' in cell:
+                                                cell_text = cell['text']
+                                            elif 'words' in cell:
+                                                cell_text = cell['words']
+                                        
+                                        # 更新列宽
+                                        while i >= len(col_widths):
+                                            col_widths.append(0)
+                                        col_widths[i] = max(col_widths[i], min(len(str(cell_text)), 30))
+                            
+                            # 生成分隔行
+                            separator = "+-"
+                            for width in col_widths:
+                                width = max(width, 5)  # 最小宽度5
+                                separator += "-" * width + "-+-"
+                            
+                            # 显示表格数据
+                            lines.append(separator)
+                            for row in table:
+                                if isinstance(row, list):
+                                    row_text = "| "
+                                    for i, cell in enumerate(row):
+                                        cell_text = ""
+                                        if isinstance(cell, str):
+                                            cell_text = cell
+                                        elif isinstance(cell, dict):
+                                            if 'text' in cell:
+                                                cell_text = cell['text']
+                                            elif 'words' in cell:
+                                                cell_text = cell['words']
+                                        
+                                        # 使用列宽格式化
+                                        width = max(col_widths[i], 5) if i < len(col_widths) else 10
+                                        row_text += f"{cell_text:{width}} | "
+                                    
+                                    lines.append(row_text)
+                                    lines.append(separator)
+                                elif isinstance(row, dict) and 'words' in row:
+                                    lines.append(f"| {row['words']} |")
+                                    lines.append(separator)
+                        else:
+                            lines.append("  (无法解析的表格格式)")
+            else:
+                logger.warning("No valid table data found in Form result")
+                
+                # 如果没有表格数据，但有words_result，则展示文本内容
+                if 'words_result' in result and not words_result_empty:
+                    lines.append("识别到的文本内容:")
+                    for item in result['words_result']:
+                        if isinstance(item, dict) and 'words' in item:
+                            lines.append(item['words'])
+                else:
+                    lines.append("未检测到表格内容，OCR结果可能不包含表格数据")
+                    
+                # 记录完整的结果结构，帮助调试
+                logger.debug(f"Form result structure: {json.dumps(result, ensure_ascii=False)[:500]}...")
         
         # 处理通用高精度接口返回结果 (accurate)
         elif invoice_type == 'Accurate' and 'words_result' in result and not has_vat_invoice_data:
