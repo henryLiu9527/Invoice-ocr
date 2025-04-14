@@ -92,22 +92,40 @@ class BaiduOCR:
         
         # 图像编码
         image_base64 = self._encode_image(image_path)
-        data = {'image': image_base64}
         
-        # 添加特定参数
-        if ocr_type in ['accurate_basic', 'accurate']:
-            data['detect_direction'] = 'true'
-            data['probability'] = 'true'
+        # 根据不同接口设置不同的请求头和数据格式
+        headers = {}
         
-        # 针对智能财务票据添加特定参数
+        # 针对智能财务票据识别接口使用特定设置
         if ocr_type == 'multiple_invoice':
-            data['recognize_granularity'] = 'big'
-            data['detect_direction'] = 'true'
+            headers = {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Accept': 'application/json'
+            }
+            data = {
+                'image': image_base64,
+                'verify_parameter': 'false',
+                'probability': 'false',
+                'location': 'false'
+            }
+        else:
+            # 其他接口的常规参数
+            data = {'image': image_base64}
+            
+            # 添加特定参数
+            if ocr_type in ['accurate_basic', 'accurate']:
+                data['detect_direction'] = 'true'
+                data['probability'] = 'true'
         
         # 尝试请求，最多重试BAIDU_OCR_MAX_RETRIES次
         for attempt in range(BAIDU_OCR_MAX_RETRIES):
             try:
-                response = requests.post(request_url, params=params, data=data)
+                # 根据是否有自定义头部决定请求方式
+                if headers:
+                    response = requests.post(request_url, params=params, data=data, headers=headers)
+                else:
+                    response = requests.post(request_url, params=params, data=data)
+                
                 response.raise_for_status()
                 result = response.json()
                 
